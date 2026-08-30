@@ -1,0 +1,33 @@
+# Production / Limited Live Environment Configuration
+# REQUIRES EXPLICIT HUMAN AUTHORIZATION BEFORE RUNNING WITH REAL CAPITAL
+
+trading_mode: LIMITED_LIVE
+
+capital_allocation:
+  max_total_capital_usd: 1000.0   # Strict Limited Live Capital Limit ($1,000 USD max)
+  max_position_size_usd: 250.0    # Max position size per trade ($250 USD max)
+  max_open_positions: 2
+
+database:
+  path: data/trading_production.db
+  wal_mode: true
+
+exchange:
+  adapter: binance
+  testnet: false
+  api_key_env_var: BINANCE_API_KEY
+  api_secret_env_var: BINANCE_API_SECRET
+
+risk:
+  policy_file: configs/risk.yaml
+  hard_stop_loss_pct: 0.02        # 2% maximum loss per trade
+  max_drawdown_pct: 0.05          # 5% maximum total portfolio drawdown limit
+
+logging:
+  level: INFO
+  file: logs/trading_production.log
+  structured: true
+
+obsidian:
+  vault_path: ~/obsidian-vault
+  enabled: true

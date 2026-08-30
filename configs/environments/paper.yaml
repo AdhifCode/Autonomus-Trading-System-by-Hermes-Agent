@@ -1,0 +1,24 @@
+# Paper Trading Environment Configuration
+# Uses MockExchange with realistic latency — NO real trading capital
+
+trading_mode: PAPER
+
+database:
+  path: data/trading_paper.db
+  wal_mode: true
+
+exchange:
+  adapter: mock
+  simulated_latency_ms: 200
+
+risk:
+  policy_file: configs/risk.yaml
+
+logging:
+  level: INFO
+  file: logs/trading_paper.log
+  structured: true
+
+obsidian:
+  vault_path: ~/obsidian-vault
+  enabled: true

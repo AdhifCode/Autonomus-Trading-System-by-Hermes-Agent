@@ -1,0 +1,123 @@
+/* Trader Control Center - Custom Styling System */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --bg-color: #0b0f14;
+  --surface-color: #0f1720;
+  --surface-light: #16202a;
+  --accent-color: #00d1ff;
+  --accent-hover: #33c2ff;
+  --accent-sec: #ff6b6b;
+  --text-color: #e6eef6;
+  --muted-color: #9aa8b2;
+  --success-color: #38d89b;
+  --warning-color: #ffb020;
+  --border-color: rgba(255, 255, 255, 0.06);
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Typography Utilities */
+.text-xxs {
+  font-size: 0.65rem;
+  line-height: 1rem;
+}
+.tracking-tight-custom {
+  letter-spacing: -0.025em;
+}
+.tracking-tighter-custom {
+  letter-spacing: -0.04em;
+}
+
+/* Glassmorphism & Borders */
+.glass-panel {
+  background: rgba(15, 23, 32, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+}
+
+/* Status Indicators */
+.pulse-dot {
+  animation: pulse-animation 2s infinite;
+}
+@keyframes pulse-animation {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(56, 216, 155, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(56, 216, 155, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(56, 216, 155, 0);
+  }
+}
+
+/* Tab Navigation Active State */
+.nav-link.active {
+  background-color: rgba(0, 209, 255, 0.1);
+  border-right: 2px solid var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Toast Notifications Container */
+#toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.toast {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: #0f1720;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  display: flex;
+  items-center: center;
+  gap: 0.75rem;
+  animation: slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 24rem;
+  font-size: 0.875rem;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

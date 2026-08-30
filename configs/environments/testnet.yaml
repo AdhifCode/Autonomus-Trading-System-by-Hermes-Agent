@@ -1,0 +1,25 @@
+# Testnet Environment Configuration
+# Uses Binance testnet — NO real trading capital
+
+trading_mode: TESTNET
+
+database:
+  path: data/trading_testnet.db
+  wal_mode: true
+
+exchange:
+  adapter: binance
+  testnet: true
+  simulated_latency_ms: 0
+
+risk:
+  policy_file: configs/risk.yaml
+
+logging:
+  level: INFO
+  file: logs/trading_testnet.log
+  structured: true
+
+obsidian:
+  vault_path: ~/obsidian-vault
+  enabled: true

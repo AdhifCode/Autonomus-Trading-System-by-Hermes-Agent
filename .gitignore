@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Data
+data/*.parquet
+data/*.duckdb
+data/*.duckdb.wal
+
+# Logs
+logs/
+*.log
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets — NEVER commit
+*.pem
+*.key

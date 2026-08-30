@@ -1,0 +1,24 @@
+# Development Environment Configuration
+# Uses MockExchange — NO real trading capital
+
+trading_mode: DEVELOPMENT
+
+database:
+  path: data/trading_dev.db
+  wal_mode: true
+
+exchange:
+  adapter: mock
+  simulated_latency_ms: 100
+
+risk:
+  policy_file: configs/risk.yaml
+
+logging:
+  level: DEBUG
+  file: logs/trading_dev.log
+  structured: true
+
+obsidian:
+  vault_path: ~/obsidian-vault
+  enabled: false
