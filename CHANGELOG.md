@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.1] - 2026-09-02
+
+### Added
+- **Authoritative System Verification Engine (`scripts/verify_system.py`)**: Standalone, deterministic verification tool covering 46 subsystem gates across Python, dependencies, packages, configs, database, migrations, domain models, risk rules, execution flow, reconciliation, backtesting, strategy lifecycle, knowledge layer, web health, and test suite.
+- **Pre-Hermes Repository Audit (`PRE_HERMES_AUDIT.md`)**: Complete repository component inventory and dependency mapping.
+- **Development Plan Reality Audit (`DEVELOPMENT_PLAN_REALITY.md`)**: Reconciliation of all 17 implementation phases against source code and runtime evidence.
+- **Pre-Hermes Acceptance Report (`PRE_HERMES_ACCEPTANCE_REPORT.md`)**: Authoritative formal acceptance report verifying all 21 pre-Hermes criteria with decision **`PRE-HERMES READY`**.
+
+### Fixed
+- Fixed DuckDB timestamp parsing in `test_phase8_backtesting.py` by adding `pytz>=2024.1` to `analytics` dependencies in `pyproject.toml`.
+- Replaced dynamic `nest_asyncio` calls in `core/paper/runner.py` and `core/testnet/runner.py` with standard `ThreadPoolExecutor` workers.
+- Resolved all strict static typing issues in `web/service.py` for mypy strict compliance across 168 source files (0 errors).
+- Resolved all ruff formatting and linting violations (0 errors).
+- Unified test suite to 587 tests passing with 100% pass rate in 17.82s and 93.11% code coverage.
+- Synchronized all documentation (`OPERATIONS_GUIDE.md`, `DEVELOPMENT_PLAN.md`, `SYSTEM_TRACEABILITY.md`, `README.md`) to canonical reality.
+
+---
+
 ## [2.1.0] - 2026-08-30
 
 ### Added

@@ -23,7 +23,7 @@ def main() -> None:
     print("Executing 60-cycle PAPER mode simulation across multi-regime time series...")
     telemetry = engine.run_paper_session(num_cycles=60, random_seed=42)
 
-    print(f"Session finished successfully!")
+    print("Session finished successfully!")
     print(f"- Total Signals Ingested: {telemetry.total_signals_ingested}")
     print(f"- Proposals Generated: {telemetry.total_proposals_generated}")
     print(f"- Proposals Approved: {telemetry.proposals_approved}")
@@ -36,7 +36,9 @@ def main() -> None:
     print(f"- Net PnL: ${telemetry.net_pnl:+,.2f} USD")
     print(f"- Max Drawdown: {telemetry.max_drawdown_pct:.2f}%")
     print(f"- Avg Latency: {telemetry.avg_latency_ms():.2f} ms")
-    print(f"- Reconciliations: {telemetry.reconciliations_count} ({telemetry.reconciliation_clean_count} clean)")
+    print(
+        f"- Reconciliations: {telemetry.reconciliations_count} ({telemetry.reconciliation_clean_count} clean)"
+    )
 
     report_md = engine.generate_report_markdown()
 

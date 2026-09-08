@@ -12,10 +12,10 @@ This report presents the operational metrics, risk engine enforcement performanc
 ---
 
 ## 2. Session Parameters & Environment Setup
-- **Session Duration**: 2026-08-30 08:14:48 UTC to 2026-08-30 08:15:06 UTC
+- **Session Duration**: 2026-09-08 17:24:02 UTC to 2026-09-08 17:24:32 UTC
 - **Initial Portfolio Balance**: `$50,000.00 USDT`
 - **Simulated Latency**: `200 ms` (Mock Exchange latency with network jitter)
-- **Active Market Regimes**: `SIDEWAYS, BULL, BEAR, HIGH_VOLATILITY`
+- **Active Market Regimes**: `BEAR, HIGH_VOLATILITY, SIDEWAYS, BULL`
 - **Strategy Versions**: `momentum:1.2, breakout_v2:2.1`
 - **AI Model Version**: `hermes-v2.1`
 
@@ -34,17 +34,17 @@ This report presents the operational metrics, risk engine enforcement performanc
 | **Execution Layer** | Orders Filled | `59` | Filled |
 | **Execution Layer** | Partial Fills | `0` | Partial Fills |
 | **Performance PnL** | Gross Portfolio PnL | `$+0.00` | USD |
-| **Transaction Costs** | Simulated Brokerage Fees (0.04%) | `$23.60` | USD |
-| **Transaction Costs** | Simulated Market Slippage | `$5.90` | USD |
+| **Transaction Costs** | Simulated Brokerage Fees (0.04%) | `$47.20` | USD |
+| **Transaction Costs** | Simulated Market Slippage | `$11.80` | USD |
 | **Transaction Costs** | Funding Costs | `$0.00` | USD |
-| **Economic Performance** | **NET Portfolio PnL** | **`$-29.50`** | **Primary Economic Metric** |
+| **Economic Performance** | **NET Portfolio PnL** | **`$-59.00`** | **Primary Economic Metric** |
 | **Risk & Portfolio** | Ending Portfolio Equity | `$50,000.00` | USD |
-| **Risk & Portfolio** | Peak-to-Trough Max Drawdown | `0.08%` | Max Threshold: 15.0% |
-| **Risk & Portfolio** | Max Gross Exposure | `$3,002.72` | USD |
-| **System Latency** | Average Execution Latency | `401.02 ms` | Target < 500 ms |
-| **System Latency** | P95 Execution Latency | `401.19 ms` | Target < 800 ms |
+| **Risk & Portfolio** | Peak-to-Trough Max Drawdown | `0.00%` | Max Threshold: 15.0% |
+| **Risk & Portfolio** | Max Gross Exposure | `$6,003.20` | USD |
+| **System Latency** | Average Execution Latency | `401.03 ms` | Target < 500 ms |
+| **System Latency** | P95 Execution Latency | `401.40 ms` | Target < 800 ms |
 | **Reconciliation** | Total Reconciliation Cycles | `6` | Runs |
-| **Reconciliation** | Clean Authoritative Syncs | `3` | Clean Syncs |
+| **Reconciliation** | Clean Authoritative Syncs | `6` | Clean Syncs |
 
 ---
 

@@ -54,3 +54,7 @@ Thumbs.db
 # Secrets — NEVER commit
 *.pem
 *.key
+
+# Local tooling & generated test logs
+uv
+knowledge/vault/Trading Logs/

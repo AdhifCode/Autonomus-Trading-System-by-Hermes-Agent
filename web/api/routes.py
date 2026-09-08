@@ -6,9 +6,9 @@ Market Regimes, Strategies, Backtesting, Knowledge Base, Learning Loop V2, and S
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
 from web.api.auth import verify_api_key
@@ -74,8 +74,9 @@ class AdvanceStageRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+@router.get("/health")
 @router.get("/system/status")
-def get_system_status(service: ControlCenterService = Depends(get_service)) -> Dict[str, Any]:
+def get_system_status(service: ControlCenterService = Depends(get_service)) -> dict[str, Any]:
     """Get system health and operational status."""
     return service.get_system_status()
 
@@ -85,7 +86,7 @@ def toggle_kill_switch(
     req: KillSwitchRequest,
     service: ControlCenterService = Depends(get_service),
     token: str = Depends(verify_api_key),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Emergency System Hard Kill Switch trigger (Requires Auth)."""
     return service.set_kill_switch(active=req.active, reason=req.reason)
 
@@ -95,7 +96,7 @@ def set_trading_mode(
     req: TradingModeRequest,
     service: ControlCenterService = Depends(get_service),
     token: str = Depends(verify_api_key),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Update trading mode (Requires Auth)."""
     return service.set_trading_mode(req.mode)
 
@@ -106,7 +107,7 @@ def set_trading_mode(
 
 
 @router.get("/portfolio")
-def get_portfolio(service: ControlCenterService = Depends(get_service)) -> Dict[str, Any]:
+def get_portfolio(service: ControlCenterService = Depends(get_service)) -> dict[str, Any]:
     """Get portfolio equity and balance breakdown."""
     return service.get_portfolio()
 
@@ -122,7 +123,7 @@ async def close_position(
     req: ClosePositionRequest,
     service: ControlCenterService = Depends(get_service),
     token: str = Depends(verify_api_key),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Close position safely through Risk Engine authorization and Execution Service."""
     return await service.close_position(symbol=req.symbol, side=req.side, size=req.size)
 
@@ -138,7 +139,7 @@ async def cancel_order(
     req: CancelOrderRequest,
     service: ControlCenterService = Depends(get_service),
     token: str = Depends(verify_api_key),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Cancel order via Execution Service (Requires Auth)."""
     return await service.cancel_order(req.order_id)
 
@@ -154,7 +155,7 @@ async def submit_trade_proposal(
     req: TradeProposalRequest,
     service: ControlCenterService = Depends(get_service),
     token: str = Depends(verify_api_key),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Submit trade proposal through Risk Engine evaluation & Execution Service (Requires Auth)."""
     return await service.submit_trade_proposal(req.model_dump())
 
@@ -165,7 +166,7 @@ async def submit_trade_proposal(
 
 
 @router.get("/risk/status")
-def get_risk_status(service: ControlCenterService = Depends(get_service)) -> Dict[str, Any]:
+def get_risk_status(service: ControlCenterService = Depends(get_service)) -> dict[str, Any]:
     """Get deterministic risk engine policy and 20 validator statuses."""
     return service.get_risk_status()
 
@@ -177,7 +178,7 @@ def get_ai_decisions(service: ControlCenterService = Depends(get_service)) -> An
 
 
 @router.get("/market/regimes")
-def get_market_regimes(service: ControlCenterService = Depends(get_service)) -> Dict[str, Any]:
+def get_market_regimes(service: ControlCenterService = Depends(get_service)) -> dict[str, Any]:
     """Get market regime engine output."""
     return service.get_market_intelligence()
 
@@ -189,7 +190,7 @@ def get_strategies(service: ControlCenterService = Depends(get_service)) -> Any:
 
 
 @router.get("/backtesting/summary")
-def get_backtesting_summary(service: ControlCenterService = Depends(get_service)) -> Dict[str, Any]:
+def get_backtesting_summary(service: ControlCenterService = Depends(get_service)) -> dict[str, Any]:
     """Get DuckDB performance metrics and walk-forward backtest summary."""
     return service.get_backtesting_summary()
 
@@ -206,7 +207,7 @@ def get_experiments(service: ControlCenterService = Depends(get_service)) -> Any
 
 
 @router.get("/knowledge/dashboard")
-def get_knowledge_dashboard(service: ControlCenterService = Depends(get_service)) -> Dict[str, Any]:
+def get_knowledge_dashboard(service: ControlCenterService = Depends(get_service)) -> dict[str, Any]:
     """Get Obsidian vault knowledge base metrics."""
     return service.get_knowledge_dashboard()
 
@@ -221,7 +222,7 @@ def get_knowledge_notes(
 
 
 @router.get("/knowledge/graph")
-def get_knowledge_graph(service: ControlCenterService = Depends(get_service)) -> Dict[str, Any]:
+def get_knowledge_graph(service: ControlCenterService = Depends(get_service)) -> dict[str, Any]:
     """Get Knowledge Graph nodes and links."""
     return service.get_knowledge_graph()
 
@@ -237,7 +238,7 @@ def advance_lesson_stage(
     req: AdvanceStageRequest,
     service: ControlCenterService = Depends(get_service),
     token: str = Depends(verify_api_key),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Advance candidate lesson stage (Requires Auth for Human Approval)."""
     return service.advance_lesson_stage(
         lesson_id=req.lesson_id,

@@ -27,12 +27,10 @@ from adapters.repositories.sqlite_repos import (
 )
 from core.domain.enums import (
     EventType,
-    ExecutionState,
     KillSwitchState,
+    MarketRegime,
     OrderSide,
-    OrderStatus,
     OrderType,
-    PositionSide,
     RiskDecisionType,
     Severity,
     StrategyLifecycle,
@@ -40,9 +38,6 @@ from core.domain.enums import (
 )
 from core.domain.events import AuditEvent
 from core.domain.market_state import MarketState
-from core.domain.order import Order
-from core.domain.portfolio import PortfolioState
-from core.domain.position import Position
 from core.domain.risk import RiskDecision, RiskPolicy
 from core.domain.strategy import StrategyVersion
 from core.domain.system_state import SystemState
@@ -55,10 +50,11 @@ from core.domain.trade_proposal import (
 )
 from core.execution.service import ExecutionService
 from core.logging import get_logger
+from core.portfolio.calculator import PortfolioCalculator
 from core.risk.engine import RiskEngine
-from core.strategy.regime import MarketRegime, MarketRegimeEngine
+from core.strategy.regime import MarketRegimeEngine
 from knowledge.api import KnowledgeAPI
-from knowledge.models import CandidateLesson, LearningStage
+from knowledge.models import LearningStage
 from migrations.runner import MigrationRunner
 
 logger = get_logger(__name__)
@@ -67,7 +63,9 @@ logger = get_logger(__name__)
 class ControlCenterService:
     """Master backend service for Trader Control Center UI."""
 
-    def __init__(self, db_path: str = "data/trading.db", vault_path: str = "~/obsidian-vault") -> None:
+    def __init__(
+        self, db_path: str = "data/trading.db", vault_path: str = "~/obsidian-vault"
+    ) -> None:
         # 1. SQLite Database & Repositories
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self.db = SQLiteManager(db_path=db_path)
@@ -126,7 +124,9 @@ class ControlCenterService:
         try:
             balances = self.balance_repo.get_all()
             if not balances:
-                self.balance_repo.save(currency="USDT", total=42504.0, available=42504.0, locked=0.0, source="local")
+                self.balance_repo.save(
+                    currency="USDT", total=42504.0, available=42504.0, locked=0.0, source="local"
+                )
 
             strategies = self.strategy_repo.get_all()
             if not strategies:
@@ -164,10 +164,13 @@ class ControlCenterService:
             "timestamp": datetime.now(UTC).isoformat(),
         }
 
-    def set_kill_switch(self, active: bool, reason: str = "User initiated via Trader Control Center UI") -> dict[str, Any]:
+    def set_kill_switch(
+        self, active: bool, reason: str = "User initiated via Trader Control Center UI"
+    ) -> dict[str, Any]:
         """Activate or deactivate emergency System Hard Kill Switch."""
-        self.system_state.kill_switch = KillSwitchState.HARD_KILL if active else KillSwitchState.ACTIVE
-        action_name = "HARD_KILL_ACTIVATED" if active else "HARD_KILL_DEACTIVATED"
+        self.system_state.kill_switch = (
+            KillSwitchState.HARD_KILL if active else KillSwitchState.ACTIVE
+        )
 
         event = AuditEvent(
             event_id=f"EVT-KILL-{int(datetime.now(UTC).timestamp())}",
@@ -181,7 +184,11 @@ class ControlCenterService:
         self.event_repo.save(event)
         logger.warning(f"HARD KILL SWITCH TOGGLED: active={active}, reason={reason}")
 
-        return {"kill_switch_active": active, "message": f"Kill switch set to {active}", "event_id": event.event_id}
+        return {
+            "kill_switch_active": active,
+            "message": f"Kill switch set to {active}",
+            "event_id": event.event_id,
+        }
 
     def set_trading_mode(self, mode_str: str) -> dict[str, Any]:
         """Update system trading mode with audit logging."""
@@ -215,82 +222,51 @@ class ControlCenterService:
         free_usdt = 35000.0
         locked_usdt = 7504.0
         for b in balances:
-            if b.get("asset") == "USDT":
-                free_usdt = float(b.get("free", 35000.0))
-                locked_usdt = float(b.get("locked", 7504.0))
-                total_equity = free_usdt + locked_usdt
+            if b.get("currency") == "USDT" or b.get("asset") == "USDT":
+                free_usdt = float(b.get("available", b.get("free", 35000.0)))
+                locked_usdt = float(b.get("locked", 0.0))
+                total_equity = float(b.get("total", free_usdt + locked_usdt))
+
+        open_positions = self.position_repo.get_open_positions()
+        port_calc = PortfolioCalculator(initial_peak_equity=max(50000.0, total_equity))
+        port_summary = port_calc.calculate_portfolio_summary(
+            wallet_balance=total_equity,
+            available_balance=free_usdt,
+            positions=open_positions,
+        )
 
         return {
-            "total_equity": total_equity,
-            "free_balance": free_usdt,
-            "locked_balance": locked_usdt,
-            "net_pnl_today": 350.0,
-            "drawdown_status": "Safe",
-            "drawdown_pct": 0.012,
-            "balances": balances or [{"asset": "USDT", "free": free_usdt, "locked": locked_usdt}],
+            "total_equity": round(port_summary.total_equity, 2),
+            "free_balance": round(port_summary.available_balance, 2),
+            "locked_balance": round(locked_usdt, 2),
+            "net_pnl_today": round(port_summary.daily_pnl, 2),
+            "drawdown_status": "Safe" if port_summary.drawdown_pct < 10.0 else "Elevated",
+            "drawdown_pct": round(port_summary.drawdown_pct / 100.0, 4),
+            "balances": balances or [{"currency": "USDT", "available": free_usdt, "locked": locked_usdt, "total": total_equity}],
         }
 
     def get_positions(self) -> list[dict[str, Any]]:
         """Return active open positions from SQLite state."""
-        pos_records = self.position_repo.get_all()
-        if not pos_records:
-            return [
-                {
-                    "symbol": "BTCUSDT",
-                    "side": "LONG",
-                    "size": 0.5,
-                    "entry_price": 42500.0,
-                    "mark_price": 43200.0,
-                    "unrealized_pnl": 350.0,
-                    "leverage": 2,
-                    "margin_type": "ISOLATED",
-                    "updated_at": datetime.now(UTC).isoformat(),
-                },
-                {
-                    "symbol": "ETHUSDT",
-                    "side": "SHORT",
-                    "size": 2.0,
-                    "entry_price": 2800.0,
-                    "mark_price": 2792.5,
-                    "unrealized_pnl": 15.0,
-                    "leverage": 3,
-                    "margin_type": "CROSS",
-                    "updated_at": datetime.now(UTC).isoformat(),
-                },
-            ]
-        return [p.model_dump() if hasattr(p, "model_dump") else p for p in pos_records]
+        pos_records = self.position_repo.get_open_positions()
+        return [
+            dict(
+                p.model_dump(),
+                size=p.quantity,
+                mark_price=p.current_price,
+            )
+            for p in pos_records
+        ]
 
     def get_orders(self) -> list[dict[str, Any]]:
         """Return active and historical orders from SQLite canonical state."""
         orders = self.order_repo.get_all()
-        if not orders:
-            return [
-                {
-                    "order_id": "ORD-20260830-001",
-                    "client_order_id": "CL-BTC-001",
-                    "symbol": "BTCUSDT",
-                    "side": "BUY",
-                    "order_type": "MARKET",
-                    "quantity": 0.5,
-                    "price": 42500.0,
-                    "status": "FILLED",
-                    "execution_state": "FILLED",
-                    "created_at": "2026-08-30T08:30:00Z",
-                },
-                {
-                    "order_id": "ORD-20260830-002",
-                    "client_order_id": "CL-ETH-002",
-                    "symbol": "ETHUSDT",
-                    "side": "SELL",
-                    "order_type": "LIMIT",
-                    "quantity": 2.0,
-                    "price": 2800.0,
-                    "status": "FILLED",
-                    "execution_state": "FILLED",
-                    "created_at": "2026-08-30T09:15:00Z",
-                },
-            ]
-        return [o.model_dump() if hasattr(o, "model_dump") else o for o in orders]
+        return [
+            dict(
+                o.model_dump(),
+                order_id=o.client_order_id,
+            )
+            for o in orders
+        ]
 
     def get_trades(self) -> list[dict[str, Any]]:
         """Return trade records from SQLite canonical state."""
@@ -339,7 +315,7 @@ class ControlCenterService:
 
     async def submit_trade_proposal(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Submit manual or AI TradeProposal through Risk Engine & Execution Service.
-        
+
         CRITICAL INVARIANT: TradeProposals MUST pass RiskEngine evaluation.
         They CANNOT bypass risk checks or directly access exchange APIs.
         """
@@ -347,8 +323,9 @@ class ControlCenterService:
             now = datetime.now(UTC)
             side_enum = OrderSide(payload.get("side", "BUY").upper())
             order_type_enum = OrderType(payload.get("order_type", "MARKET").upper())
-            price_val = float(payload.get("price")) if payload.get("price") else 43000.0
-            
+            raw_price = payload.get("price")
+            price_val = float(raw_price) if raw_price is not None else 43000.0
+
             # Build valid PRP-YYYYMMDD-NNNNNN ID format
             prp_seq = int(now.timestamp()) % 1000000
             prop_id = f"PRP-{now.strftime('%Y%m%d')}-{prp_seq:06d}"
@@ -380,27 +357,34 @@ class ControlCenterService:
             return {"error": f"Invalid TradeProposal payload: {err}", "status": "REJECTED"}
 
         # Build current market and portfolio state for RiskEngine evaluation
+        spread_val = max(1.0, round(price_val * 0.0002, 2))
         mkt_state = MarketState(
             symbol=proposal.symbol,
             price=price_val,
-            bid=price_val,
-            ask=price_val * 1.0002,
-            spread=price_val * 0.0002,
-            volume_24h=100000.0,
+            bid=round(price_val - spread_val / 2.0, 2),
+            ask=round(price_val + spread_val / 2.0, 2),
+            spread=spread_val,
+            volume_24h=1000000.0,
             timestamp=now,
             data_age_seconds=0.0,
         )
 
-        port_state = PortfolioState(
-            balance=35000.0,
-            equity=42504.0,
-            available_margin=35000.0,
-            exposure=0.0,
-            unrealized_pnl=350.0,
-            positions=[],
-            open_orders=[],
+        open_positions = self.position_repo.get_open_positions()
+        current_bal = {}
+        try:
+            current_bal = self.balance_repo.get_latest("USDT", source="local")
+        except Exception as exc:
+            logger.debug(f"Default balance used: {exc}")
+        wallet_bal = float(current_bal.get("total", 42504.0))
+        avail_bal = float(current_bal.get("available", 35000.0))
+        port_calc = PortfolioCalculator(initial_peak_equity=max(50000.0, wallet_bal))
+        port_summary = port_calc.calculate_portfolio_summary(
+            wallet_balance=wallet_bal,
+            available_balance=avail_bal,
+            positions=open_positions,
             timestamp=now,
         )
+        port_state = port_calc.to_portfolio_state(port_summary, open_positions)
 
         eval_sys_state = self.system_state
         if eval_sys_state.trading_mode == TradingMode.DEVELOPMENT:
@@ -421,7 +405,9 @@ class ControlCenterService:
         audit = AuditEvent(
             event_id=f"EVT-PROP-{proposal_id}",
             event_type=EventType.RISK_EVALUATED,
-            severity=Severity.INFO if decision.decision == RiskDecisionType.APPROVED else Severity.WARNING,
+            severity=Severity.INFO
+            if decision.decision == RiskDecisionType.APPROVED
+            else Severity.WARNING,
             source="TraderControlCenter",
             message=f"Trade proposal {proposal_id} ({proposal.symbol} {proposal.side.value}) evaluated: {decision.decision.value}",
             metadata={"proposal": proposal.model_dump(), "decision": decision.model_dump()},
@@ -430,7 +416,9 @@ class ControlCenterService:
         self.event_repo.save(audit)
 
         if decision.decision != RiskDecisionType.APPROVED:
-            logger.warning(f"Trade proposal {proposal_id} REJECTED by RiskEngine: {decision.violations}")
+            logger.warning(
+                f"Trade proposal {proposal_id} REJECTED by RiskEngine: {decision.violations}"
+            )
             return {
                 "proposal_id": proposal_id,
                 "risk_decision": decision.decision.value,
@@ -445,7 +433,9 @@ class ControlCenterService:
             return {
                 "proposal_id": proposal_id,
                 "risk_decision": decision.decision.value,
-                "execution_result": exec_result.execution_state.value if hasattr(exec_result, "execution_state") else str(exec_result),
+                "execution_result": exec_result.execution_state.value
+                if hasattr(exec_result, "execution_state")
+                else str(exec_result),
                 "status": "APPROVED",
                 "message": "Trade proposal approved by RiskEngine and submitted to Execution Service.",
             }
@@ -498,7 +488,11 @@ class ControlCenterService:
         """Return active risk policies, 20 validator states, and recent violations."""
         is_ks_pass = self.system_state.kill_switch == KillSwitchState.ACTIVE
         validators = [
-            {"id": "V01", "name": "Kill Switch Validator", "status": "PASS" if is_ks_pass else "FAIL"},
+            {
+                "id": "V01",
+                "name": "Kill Switch Validator",
+                "status": "PASS" if is_ks_pass else "FAIL",
+            },
             {"id": "V02", "name": "Trading Mode Validator", "status": "PASS"},
             {"id": "V03", "name": "Stale Market Data Validator", "status": "PASS"},
             {"id": "V04", "name": "Max Position Size Limit", "status": "PASS"},
@@ -532,7 +526,39 @@ class ControlCenterService:
         }
 
     def get_ai_decisions(self) -> list[dict[str, Any]]:
-        """Return Hermes trade proposal logs and risk decisions."""
+        """Return Hermes trade proposal logs and risk decisions from SQLite repository."""
+        db_decisions = self.risk_repo.get_all()
+        if db_decisions:
+            formatted = []
+            for d in db_decisions:
+                violations = d.get("violations")
+                if isinstance(violations, str):
+                    try:
+                        import json
+                        v_list = json.loads(violations)
+                        reason = "; ".join(v.get("rule", "") for v in v_list) if v_list else "All risk rules satisfied"
+                    except Exception:
+                        reason = violations
+                elif isinstance(violations, list):
+                    reason = "; ".join(str(v) for v in violations) if violations else "All risk rules satisfied"
+                else:
+                    reason = "All risk rules satisfied" if d.get("decision") == "APPROVED" else "Risk limits breached"
+
+                formatted.append(
+                    {
+                        "decision_id": d.get("decision_id", ""),
+                        "proposal_id": d.get("proposal_id", ""),
+                        "symbol": d.get("symbol", "BTCUSDT"),
+                        "side": d.get("side", "BUY"),
+                        "llm_confidence": 0.85,
+                        "risk_decision": d.get("decision", ""),
+                        "policy_version": d.get("policy_version", self.risk_policy.policy_version),
+                        "reasoning": reason,
+                        "timestamp": d.get("created_at", datetime.now(UTC).isoformat()),
+                    }
+                )
+            return formatted
+
         return [
             {
                 "decision_id": "DEC-20260830-001",
@@ -555,17 +581,6 @@ class ControlCenterService:
                 "policy_version": "1.4",
                 "reasoning": "RSI Bearish divergence on 1h timeframe.",
                 "timestamp": "2026-08-30T09:15:00Z",
-            },
-            {
-                "decision_id": "DEC-20260830-003",
-                "proposal_id": "PROP-20260830-003",
-                "symbol": "SOLUSDT",
-                "side": "LONG",
-                "llm_confidence": 0.92,
-                "risk_decision": "REJECTED",
-                "policy_version": "1.4",
-                "reasoning": "Symbol exposure limit exceeded for SOLUSDT.",
-                "timestamp": "2026-08-30T10:05:00Z",
             },
         ]
 
@@ -610,10 +625,10 @@ class ControlCenterService:
             ]
         return [
             {
-                "strategy_id": s.strategy_id,
-                "version": s.version,
-                "lifecycle": s.lifecycle.value,
-                "immutable": s.lifecycle == StrategyLifecycle.PRODUCTION,
+                "strategy_id": s["strategy_id"],
+                "version": s["version"],
+                "lifecycle": s["lifecycle"],
+                "immutable": s["lifecycle"] == StrategyLifecycle.PRODUCTION.value,
             }
             for s in strats
         ]
@@ -663,7 +678,10 @@ class ControlCenterService:
             "vault_path": str(self.knowledge_api.vault_manager.vault_path),
             "vault_available": self.knowledge_api.is_vault_available(),
             "queued_sync_tasks": self.knowledge_api.sync_worker.queue.size,
-            "categories": {cat: len(self.knowledge_api.index.get_notes_by_category(cat)) for cat in getattr(self.knowledge_api.index, "_category_index", {})},
+            "categories": {
+                cat: len(self.knowledge_api.index.get_notes_by_category(cat))
+                for cat in getattr(self.knowledge_api.index, "_category_index", {})
+            },
         }
 
     def get_knowledge_notes(self, category: str | None = None) -> list[dict[str, Any]]:
@@ -680,17 +698,21 @@ class ControlCenterService:
         links = []
 
         for note in notes:
-            nodes.append({
-                "id": note.path or note.note_id,
-                "title": note.title,
-                "category": note.category.value,
-                "tags": note.tags,
-            })
+            nodes.append(
+                {
+                    "id": note.path or note.note_id,
+                    "title": note.title,
+                    "category": note.category.value,
+                    "tags": note.tags,
+                }
+            )
             for target_link in note.internal_links:
-                links.append({
-                    "source": note.path or note.note_id,
-                    "target": target_link,
-                })
+                links.append(
+                    {
+                        "source": note.path or note.note_id,
+                        "target": target_link,
+                    }
+                )
 
         return {"nodes": nodes, "links": links}
 
@@ -708,9 +730,11 @@ class ControlCenterService:
             )
             lessons = [c1]
 
-        return [l.model_dump() for l in lessons]
+        return [lesson_item.model_dump() for lesson_item in lessons]
 
-    def advance_lesson_stage(self, lesson_id: str, target_stage: str, human_approved: bool = False) -> dict[str, Any]:
+    def advance_lesson_stage(
+        self, lesson_id: str, target_stage: str, human_approved: bool = False
+    ) -> dict[str, Any]:
         """Advance candidate lesson stage in Learning Loop V2."""
         try:
             stage_enum = LearningStage(target_stage)
@@ -723,11 +747,15 @@ class ControlCenterService:
             # Audit event
             event = AuditEvent(
                 event_id=f"EVT-LEARN-{lesson_id}",
-                event_type="LEARNING_STAGE_ADVANCED",
+                event_type=EventType.STATE_TRANSITION,
                 severity=Severity.INFO,
-                component="TraderControlCenter",
+                source="TraderControlCenter",
                 message=f"Lesson {lesson_id} advanced to {stage_enum.value}",
-                payload={"lesson_id": lesson_id, "target_stage": stage_enum.value, "human_approved": human_approved},
+                metadata={
+                    "lesson_id": lesson_id,
+                    "target_stage": stage_enum.value,
+                    "human_approved": human_approved,
+                },
                 timestamp=datetime.now(UTC),
             )
             self.event_repo.save(event)
@@ -755,5 +783,7 @@ class ControlCenterService:
                     "timestamp": datetime.now(UTC).isoformat(),
                 }
             ]
-        sorted_events = sorted(events, key=lambda e: getattr(e, "timestamp", datetime.now(UTC)), reverse=True)[:limit]
+        sorted_events = sorted(
+            events, key=lambda e: getattr(e, "timestamp", datetime.now(UTC)), reverse=True
+        )[:limit]
         return [e.model_dump() if hasattr(e, "model_dump") else e for e in sorted_events]

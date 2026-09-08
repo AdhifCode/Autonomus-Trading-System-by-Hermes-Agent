@@ -46,6 +46,7 @@ class BinanceAdapter(ExchangeAdapter):
             api_key=api_key, api_secret=api_secret, testnet=testnet
         )
         self.ws_client = ws_client or BinanceWebSocketClient(testnet=testnet)
+        self._order_symbol_cache: dict[str, str] = {}
 
     async def get_account(self) -> dict[str, float]:
         """Fetch balance and equity snapshot via authoritative REST endpoint."""
@@ -154,12 +155,11 @@ class BinanceAdapter(ExchangeAdapter):
         raw_orders = await self.rest_client.get_open_orders()
         return [self._map_raw_order_to_domain(r) for r in raw_orders]
 
-    async def get_order(self, order_id: str) -> Order:
+    async def get_order(self, order_id: str, symbol: str | None = None) -> Order:
         """Query order state by client_order_id via authoritative REST endpoint."""
         try:
-            # Assume symbol is embedded or lookup in standard symbols if needed
-            # Default lookup with client_order_id
-            raw = await self.rest_client.get_order(symbol="BTCUSDT", client_order_id=order_id)
+            target_symbol = symbol or self._order_symbol_cache.get(order_id, "BTCUSDT")
+            raw = await self.rest_client.get_order(symbol=target_symbol, client_order_id=order_id)
             return self._map_raw_order_to_domain(raw)
         except RecordNotFoundError:
             raise
@@ -170,6 +170,7 @@ class BinanceAdapter(ExchangeAdapter):
 
     async def submit_order(self, order: Order) -> Order:
         """Submit new order to Binance Testnet via REST API."""
+        self._order_symbol_cache[order.client_order_id] = order.symbol
         raw = await self.rest_client.submit_order(
             symbol=order.symbol,
             side=order.side.value if isinstance(order.side, OrderSide) else str(order.side),
@@ -189,10 +190,11 @@ class BinanceAdapter(ExchangeAdapter):
             }
         )
 
-    async def cancel_order(self, order_id: str) -> bool:
+    async def cancel_order(self, order_id: str, symbol: str | None = None) -> bool:
         """Cancel an open order via REST API."""
         try:
-            raw = await self.rest_client.cancel_order(symbol="BTCUSDT", client_order_id=order_id)
+            target_symbol = symbol or self._order_symbol_cache.get(order_id, "BTCUSDT")
+            raw = await self.rest_client.cancel_order(symbol=target_symbol, client_order_id=order_id)
             return raw.get("status") in ("CANCELED", "FILLED", "CANCELLED")
         except RecordNotFoundError:
             return False

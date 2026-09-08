@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 from core.prep.limited_live import LimitedLivePrepEngine, LimitedLivePrepTelemetry
 
 

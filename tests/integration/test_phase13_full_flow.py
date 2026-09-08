@@ -13,10 +13,10 @@ from __future__ import annotations
 import os
 import tempfile
 from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from adapters.database.sqlite import SQLiteManager
-from adapters.exchange.base import ExchangeAdapter
 from adapters.exchange.mock.adapter import MockExchange
 from adapters.repositories.sqlite_repos import (
     AuthorizationRepository,
@@ -31,45 +31,31 @@ from adapters.repositories.sqlite_repos import (
     TradeRepository,
 )
 from core.domain.enums import (
-    EventType,
-    ExecutionState,
     KillSwitchState,
-    MarketRegime,
     OrderSide,
     OrderStatus,
     OrderType,
     RiskDecisionType,
-    Severity,
     TradingMode,
 )
 from core.domain.market_state import MarketState
 from core.domain.order import Order
 from core.domain.portfolio import PortfolioState
-from core.domain.position import Position
-from core.domain.risk import RiskDecision, RiskPolicy
+from core.domain.risk import RiskPolicy
 from core.domain.system_state import SystemState
 from core.domain.trade_proposal import (
-    EntrySpec,
-    PositionSizeSpec,
-    StopLossSpec,
-    TakeProfitSpec,
     TradeProposal,
 )
 from core.errors import (
     DuplicateOrderError,
-    ExchangeDisconnectedError,
-    HermesBlockedOperationError,
-    HermesUnauthorizedError,
-    InvalidStateTransitionError,
-    RiskError,
 )
-from core.execution.reconciliation import MismatchType, ReconciliationEngine
+from core.execution.reconciliation import ReconciliationEngine
 from core.execution.service import ExecutionService
 from core.risk.engine import RiskEngine
 from integration.hermes.contracts.schema import ProposalSubmissionRequest, ToolRequest
 from integration.hermes.gateway import HermesGateway
 from knowledge.api import KnowledgeAPI
-from knowledge.models import NoteCategory, TradeJournalEntry
+from knowledge.models import TradeJournalEntry
 from migrations.runner import MigrationRunner
 from web.service import ControlCenterService
 
@@ -133,6 +119,7 @@ def env_setup():
         "event_repo": event_repo,
         "fill_repo": fill_repo,
         "auth_repo": auth_repo,
+        "strategy_repo": strategy_repo,
         "exchange": exchange,
         "policy": policy,
         "risk_engine": risk_engine,
@@ -344,7 +331,9 @@ def test_scenario_3_stale_data_rejection(env_setup):
         last_heartbeat=now,
     )
 
-    decision = risk_engine.evaluate(proposal=proposal, market=stale_mkt, portfolio=port_state, system=sys_state)
+    decision = risk_engine.evaluate(
+        proposal=proposal, market=stale_mkt, portfolio=port_state, system=sys_state
+    )
     assert decision.decision == RiskDecisionType.REJECTED
     assert any(v.validator == "stale_data" for v in decision.violations)
 
@@ -370,7 +359,9 @@ def test_scenario_4_kill_switch_halt(env_setup):
         last_heartbeat=now,
     )
 
-    decision = risk_engine.evaluate(proposal=proposal, market=mkt_state, portfolio=port_state, system=sys_state_ks)
+    decision = risk_engine.evaluate(
+        proposal=proposal, market=mkt_state, portfolio=port_state, system=sys_state_ks
+    )
     assert decision.decision == RiskDecisionType.FREEZE
     assert any(v.validator == "kill_switch" for v in decision.violations)
 
@@ -385,7 +376,9 @@ def test_scenario_5_max_exposure_rejection(env_setup):
     risk_engine = env_setup["risk_engine"]
     now = datetime.now(UTC)
 
-    proposal = TradeProposal.model_validate(make_proposal_payload("PRP-20260830-100005", requested_pct=0.04))
+    proposal = TradeProposal.model_validate(
+        make_proposal_payload("PRP-20260830-100005", requested_pct=0.04)
+    )
 
     mkt_state = MarketState(
         symbol="BTCUSDT",
@@ -413,7 +406,9 @@ def test_scenario_5_max_exposure_rejection(env_setup):
         last_heartbeat=now,
     )
 
-    decision = risk_engine.evaluate(proposal=proposal, market=mkt_state, portfolio=port_state, system=sys_state)
+    decision = risk_engine.evaluate(
+        proposal=proposal, market=mkt_state, portfolio=port_state, system=sys_state
+    )
     assert decision.decision == RiskDecisionType.REJECTED
     assert any(v.validator == "portfolio_exposure" for v in decision.violations)
 
@@ -428,7 +423,9 @@ def test_scenario_6_max_drawdown_rejection(env_setup):
     risk_engine = env_setup["risk_engine"]
     now = datetime.now(UTC)
 
-    proposal = TradeProposal.model_validate(make_proposal_payload("PRP-20260830-100006", requested_pct=0.02))
+    proposal = TradeProposal.model_validate(
+        make_proposal_payload("PRP-20260830-100006", requested_pct=0.02)
+    )
 
     mkt_state = MarketState(
         symbol="BTCUSDT",
@@ -457,7 +454,9 @@ def test_scenario_6_max_drawdown_rejection(env_setup):
         last_heartbeat=now,
     )
 
-    decision = risk_engine.evaluate(proposal=proposal, market=mkt_state, portfolio=port_state, system=sys_state)
+    decision = risk_engine.evaluate(
+        proposal=proposal, market=mkt_state, portfolio=port_state, system=sys_state
+    )
     assert decision.decision == RiskDecisionType.REJECTED
     assert any(v.validator == "drawdown" for v in decision.violations)
 
@@ -472,7 +471,9 @@ def test_scenario_7_insufficient_liquidity_rejection(env_setup):
     risk_engine = env_setup["risk_engine"]
     now = datetime.now(UTC)
 
-    proposal = TradeProposal.model_validate(make_proposal_payload("PRP-20260830-100007", requested_pct=0.02))
+    proposal = TradeProposal.model_validate(
+        make_proposal_payload("PRP-20260830-100007", requested_pct=0.02)
+    )
 
     low_liq_mkt = MarketState(
         symbol="BTCUSDT",
@@ -499,7 +500,9 @@ def test_scenario_7_insufficient_liquidity_rejection(env_setup):
         last_heartbeat=now,
     )
 
-    decision = risk_engine.evaluate(proposal=proposal, market=low_liq_mkt, portfolio=port_state, system=sys_state)
+    decision = risk_engine.evaluate(
+        proposal=proposal, market=low_liq_mkt, portfolio=port_state, system=sys_state
+    )
     assert decision.decision == RiskDecisionType.REJECTED
     assert any(v.validator == "liquidity" for v in decision.violations)
 
@@ -552,7 +555,10 @@ async def test_scenario_9_exchange_timeout_handling(env_setup):
 
     exec_result = await execution_service.execute_proposal(proposal, risk_decision)
     assert exec_result.error_message is not None
-    assert "recovered" in exec_result.error_message.lower() or "timeout" in exec_result.error_message.lower()
+    assert (
+        "recovered" in exec_result.error_message.lower()
+        or "timeout" in exec_result.error_message.lower()
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -643,7 +649,10 @@ async def test_scenario_12_exchange_disconnect_handling(env_setup):
 
     exec_result = await execution_service.execute_proposal(proposal, risk_decision)
     assert exec_result.success is False
-    assert "network" in exec_result.error_message.lower() or "disconnected" in exec_result.error_message.lower()
+    assert (
+        "network" in exec_result.error_message.lower()
+        or "disconnected" in exec_result.error_message.lower()
+    )
 
 
 # ---------------------------------------------------------------------------

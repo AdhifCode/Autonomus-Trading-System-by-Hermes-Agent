@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import os
 import tempfile
+
 import pytest
 
-from core.domain.enums import TradingMode
-from core.paper.runner import PaperTradingEngine, PaperTelemetry
+from core.paper.runner import PaperTelemetry, PaperTradingEngine
 
 
 @pytest.fixture
@@ -40,7 +40,9 @@ def test_paper_trading_engine_full_run(paper_engine: PaperTradingEngine):
     assert telemetry.total_signals_ingested == 25
     assert telemetry.total_proposals_generated == 25
     assert telemetry.proposals_approved > 0
-    assert telemetry.proposals_rejected > 0  # Position size injection test (requested_pct=0.50 at cycle 15)
+    assert (
+        telemetry.proposals_rejected > 0
+    )  # Position size injection test (requested_pct=0.50 at cycle 15)
     assert telemetry.total_orders_submitted > 0
     assert telemetry.total_orders_filled > 0
     assert telemetry.fees_paid >= 0.0
@@ -58,8 +60,9 @@ def test_paper_trading_safety_invariants(paper_engine: PaperTradingEngine):
     # 1. Trading mode invariant
     assert telemetry.trading_mode == "PAPER"
     from adapters.exchange.mock.adapter import MockExchange
+
     assert isinstance(paper_engine.execution_service.exchange, MockExchange)
-    
+
     # 2. Capital safety: initial balance = 50k
     assert telemetry.initial_balance == 50000.0
 

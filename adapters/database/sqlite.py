@@ -97,8 +97,8 @@ class SQLiteManager:
         if self._connection is not None:
             try:
                 self.commit()
-            except Exception:
-                pass
+            except Exception as commit_err:
+                logger.debug("Failed to commit on close: %s", commit_err)
             self._connection.close()
             self._connection = None
             logger.info(

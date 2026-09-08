@@ -6,11 +6,11 @@ to connected dashboard clients.
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
 from core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -32,7 +32,9 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket) -> None:
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
-            logger.info(f"WebSocket client disconnected. Remaining clients: {len(self.active_connections)}")
+            logger.info(
+                f"WebSocket client disconnected. Remaining clients: {len(self.active_connections)}"
+            )
 
     async def broadcast(self, message: dict[str, Any]) -> None:
         """Broadcast JSON message to all active WebSocket clients."""
@@ -53,22 +55,26 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     await ws_manager.connect(websocket)
     try:
         # Send initial connection status
-        await websocket.send_json({
-            "type": "SYSTEM_LOG",
-            "timestamp": datetime.now(UTC).isoformat(),
-            "level": "INFO",
-            "message": "Connected to Hermes Trader Control Center WebSocket stream.",
-        })
+        await websocket.send_json(
+            {
+                "type": "SYSTEM_LOG",
+                "timestamp": datetime.now(UTC).isoformat(),
+                "level": "INFO",
+                "message": "Connected to Hermes Trader Control Center WebSocket stream.",
+            }
+        )
 
         # Main message loop
         while True:
             # Client can send ping or commands
             data = await websocket.receive_text()
             if data == "ping":
-                await websocket.send_json({
-                    "type": "PONG",
-                    "timestamp": datetime.now(UTC).isoformat(),
-                })
+                await websocket.send_json(
+                    {
+                        "type": "PONG",
+                        "timestamp": datetime.now(UTC).isoformat(),
+                    }
+                )
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
     except Exception as e:

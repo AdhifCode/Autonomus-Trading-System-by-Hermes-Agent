@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import os
 import tempfile
+
 import pytest
 
-from core.errors import ExchangeError
-from core.testnet.runner import BinanceTestnetValidationEngine, BinanceTestnetTelemetry
+from core.testnet.runner import BinanceTestnetTelemetry, BinanceTestnetValidationEngine
 
 
 @pytest.fixture

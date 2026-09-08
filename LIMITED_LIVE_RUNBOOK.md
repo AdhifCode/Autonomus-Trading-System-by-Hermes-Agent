@@ -1,4 +1,5 @@
 # Trader Control Center — Phase 17: Limited Live Runbook
+> Runbook Generation Timestamp: 2026-09-08 17:11:24 UTC
 
 ## 1. Executive Summary & Operation Protocol
 

@@ -29,30 +29,19 @@ Safety Rule: LIVE trading is NOT activated. Requires explicit human authorizatio
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 import yaml
 
 from core.domain.enums import (
-    ExecutionState,
     KillSwitchState,
-    PositionSide,
-    RiskDecisionType,
-    StrategyLifecycle,
     TradingMode,
 )
-from core.domain.position import Position
-from core.domain.risk import RiskPolicy
 from core.domain.system_state import SystemState
-from core.execution.reconciliation import ReconciliationEngine
-from core.execution.service import ExecutionService
-from integration.hermes.security import HermesSecurityBoundary
 from core.logging import get_logger
-from core.risk.engine import RiskEngine
+from integration.hermes.security import HermesSecurityBoundary
 
 logger = get_logger(__name__)
 
@@ -122,7 +111,7 @@ class LimitedLivePrepEngine:
         if not path.exists():
             raise FileNotFoundError(f"Production configuration file missing: {self.config_path}")
 
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             cfg = yaml.safe_load(f)
 
         assert cfg.get("trading_mode") == "LIMITED_LIVE"
@@ -136,7 +125,7 @@ class LimitedLivePrepEngine:
 
     def _verify_secret_management(self) -> None:
         """Verify secrets are loaded exclusively via environment variables and not hardcoded."""
-        with open(self.config_path, "r", encoding="utf-8") as f:
+        with open(self.config_path, encoding="utf-8") as f:
             content = f.read()
 
         # Ensure no plaintext secret values exist in config file
@@ -206,6 +195,7 @@ class LimitedLivePrepEngine:
             return "PASSED" if val else "FAILED"
 
         md = f"""# Trader Control Center — Phase 17: Limited Live Runbook
+> Runbook Generation Timestamp: {ts_str}
 
 ## 1. Executive Summary & Operation Protocol
 

@@ -6,13 +6,17 @@ Supports directory partitioning by symbol.
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-import pyarrow as pa  # type: ignore[import-untyped]
-import pyarrow.parquet as pq  # type: ignore[import-untyped]
+# Shield virtual environment from incompatible host distribution packages (e.g. system pandas)
+sys.path = [p for p in sys.path if not p.startswith("/usr/lib/python3/dist-packages")]
 
-from data.validation.checker import Candle
+import pyarrow as pa  # type: ignore[import-untyped]  # noqa: E402
+import pyarrow.parquet as pq  # type: ignore[import-untyped]  # noqa: E402
+
+from data.validation.checker import Candle  # noqa: E402
 
 
 class ParquetStore:

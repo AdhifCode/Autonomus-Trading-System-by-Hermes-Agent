@@ -12,8 +12,6 @@ Rules:
 
 from __future__ import annotations
 
-import json
-import logging
 import os
 import random
 import time
@@ -37,32 +35,22 @@ from adapters.repositories.sqlite_repos import (
     TradeRepository,
 )
 from core.domain.enums import (
-    ExecutionState,
     KillSwitchState,
     MarketRegime,
     OrderSide,
     OrderStatus,
-    OrderType,
-    RiskDecisionType,
     TradingMode,
 )
 from core.domain.market_state import MarketState
-from core.domain.order import Order
-from core.domain.portfolio import PortfolioState
-from core.domain.position import Position
-from core.domain.risk import RiskDecision, RiskPolicy
+from core.domain.risk import RiskPolicy
 from core.domain.system_state import SystemState
 from core.domain.trade_proposal import (
-    EntrySpec,
-    PositionSizeSpec,
-    StopLossSpec,
-    TakeProfitSpec,
     TradeProposal,
 )
 from core.execution.reconciliation import ReconciliationEngine
-from core.execution.service import ExecutionResult, ExecutionService
+from core.execution.service import ExecutionService
 from core.logging import get_logger
-from core.portfolio.calculator import PortfolioCalculator, PortfolioSummary
+from core.portfolio.calculator import PortfolioCalculator
 from core.risk.engine import RiskEngine
 from integration.hermes.contracts.schema import ProposalSubmissionRequest
 from integration.hermes.gateway import HermesGateway
@@ -83,36 +71,36 @@ class PaperTelemetry:
     initial_balance: float = 50000.0
     final_balance: float = 50000.0
     final_equity: float = 50000.0
-    
+
     total_signals_ingested: int = 0
     total_proposals_generated: int = 0
     proposals_approved: int = 0
     proposals_rejected: int = 0
     proposals_frozen: int = 0
-    
+
     total_orders_submitted: int = 0
     total_orders_filled: int = 0
     total_partial_fills: int = 0
-    
+
     gross_pnl: float = 0.0
     fees_paid: float = 0.0
     slippage_cost: float = 0.0
     funding_cost: float = 0.0
     net_pnl: float = 0.0
-    
+
     peak_equity: float = 50000.0
     max_drawdown_pct: float = 0.0
     max_gross_exposure: float = 0.0
-    
+
     latencies_ms: list[float] = field(default_factory=list)
     reconciliations_count: int = 0
     reconciliation_clean_count: int = 0
     reconciliation_mismatches_count: int = 0
-    
+
     strategy_versions_used: set[str] = field(default_factory=set)
     model_versions_used: set[str] = field(default_factory=set)
     regimes_observed: list[str] = field(default_factory=list)
-    
+
     def avg_latency_ms(self) -> float:
         return sum(self.latencies_ms) / len(self.latencies_ms) if self.latencies_ms else 0.0
 
@@ -228,7 +216,7 @@ class PaperTradingEngine:
             self.telemetry.regimes_observed.append(regime.value)
 
             # 1. Update Ingested Market State
-            symbol = random.choice(symbols)
+            symbol = random.choice(symbols)  # noqa: S311
             price_change_pct = drift + random.gauss(0, volatility)
             current_prices[symbol] = round(current_prices[symbol] * (1.0 + price_change_pct), 2)
             current_price = current_prices[symbol]
@@ -239,7 +227,7 @@ class PaperTradingEngine:
                 bid=current_price * 0.9998,
                 ask=current_price * 1.0002,
                 spread=current_price * 0.0004,
-                volume_24h=500000.0 + random.uniform(0, 100000),
+                volume_24h=500000.0 + random.uniform(0, 100000),  # noqa: S311
                 timestamp=now,
                 data_age_seconds=0.5,
             )
@@ -322,11 +310,15 @@ class PaperTradingEngine:
             if hermes_res.status == "ACCEPTED":
                 self.telemetry.proposals_approved += 1
                 proposal = TradeProposal.model_validate(prop_payload)
-                risk_decision = self.risk_engine.evaluate(proposal, mkt_state, port_state, sys_state)
+                risk_decision = self.risk_engine.evaluate(
+                    proposal, mkt_state, port_state, sys_state
+                )
 
                 # 5. Execution Service Order Processing
                 t0 = time.perf_counter()
-                exec_res = self._execute_async(self.execution_service.execute_proposal(proposal, risk_decision))
+                exec_res = self._execute_async(
+                    self.execution_service.execute_proposal(proposal, risk_decision)
+                )
                 elapsed_ms = (time.perf_counter() - t0) * 1000.0 + self.simulated_latency_ms
                 self.telemetry.latencies_ms.append(elapsed_ms)
 
@@ -348,18 +340,15 @@ class PaperTradingEngine:
                         direction_str = "LONG" if proposal.side == OrderSide.BUY else "SHORT"
                         journal_entry = TradeJournalEntry(
                             trade_id=f"TRD-PAPER-{cycle:04d}",
-                            proposal_id=proposal.proposal_id,
+                            timestamp_entry=now,
                             symbol=symbol,
                             direction=direction_str,
                             strategy_id=strat_id,
                             strategy_version=strat_ver,
                             entry_price=current_price,
                             quantity=exec_res.order.quantity,
-                            thesis=proposal.thesis,
                             market_regime=regime.value,
-                            initial_stop_loss=proposal.stop_loss.price,
-                            initial_take_profit=proposal.take_profit.price,
-                            timestamp_entry=now,
+                            notes=f"Proposal: {proposal.proposal_id}, Thesis: {proposal.thesis}, SL: {proposal.stop_loss.price}, TP: {proposal.take_profit.price}",
                         )
                         self.knowledge_api.record_trade_journal_entry(journal_entry)
 
@@ -394,6 +383,7 @@ class PaperTradingEngine:
     def _execute_async(self, coro: Any) -> Any:
         """Run async coroutines synchronously inside the paper trading engine."""
         import asyncio
+        import concurrent.futures
 
         try:
             loop = asyncio.get_running_loop()
@@ -401,10 +391,8 @@ class PaperTradingEngine:
             loop = None
 
         if loop and loop.is_running():
-            import nest_asyncio
-
-            nest_asyncio.apply()
-            return loop.run_until_complete(coro)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(asyncio.run, coro).result()
         else:
             return asyncio.run(coro)
 
@@ -431,9 +419,9 @@ This report presents the operational metrics, risk engine enforcement performanc
 - **Session Duration**: {start_str} to {end_str}
 - **Initial Portfolio Balance**: `${t.initial_balance:,.2f} USDT`
 - **Simulated Latency**: `{self.simulated_latency_ms:.0f} ms` (Mock Exchange latency with network jitter)
-- **Active Market Regimes**: `{', '.join(set(t.regimes_observed))}`
-- **Strategy Versions**: `{', '.join(t.strategy_versions_used)}`
-- **AI Model Version**: `{', '.join(t.model_versions_used)}`
+- **Active Market Regimes**: `{", ".join(set(t.regimes_observed))}`
+- **Strategy Versions**: `{", ".join(t.strategy_versions_used)}`
+- **AI Model Version**: `{", ".join(t.model_versions_used)}`
 
 ---
 
@@ -490,4 +478,4 @@ This report presents the operational metrics, risk engine enforcement performanc
         return md
 
 
-__all__ = ["PaperTradingEngine", "PaperTelemetry"]
+__all__ = ["PaperTelemetry", "PaperTradingEngine"]

@@ -48,7 +48,7 @@ cd trading-system
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -e ".[dev,analytics]"
 ```
 
 ### 3. Initialize Database Migrations
@@ -56,11 +56,15 @@ pip install -r requirements.txt
 python -m migrations.runner
 ```
 
-### 4. Run Test Suite
+### 4. Run System Verification & Test Suite
 ```bash
+# Authoritative local system verification (46 gates)
+python scripts/verify_system.py
+
+# Full test suite (587 tests)
 pytest tests/ -v
 ```
-*Expected Output*: `587 passed in ~13s`
+*Expected Output*: `587 passed in ~14s`
 
 ### 5. Launch Control Center Web Application
 ```bash
@@ -74,6 +78,7 @@ Open browser at `http://localhost:8000`
 
 | Trading Mode | Script / Entry Command | Target Purpose |
 |---|---|---|
+| **System Verification** | `python scripts/verify_system.py` | Local verification of all 46 subsystem gates |
 | **Development** | `export TRADING_MODE=DEVELOPMENT && python -m uvicorn web.app:app --port 8000` | Local development & unit testing |
 | **Paper Trading** | `python scripts/run_paper_session.py` | Simulated execution with 200ms latency |
 | **Testnet Validation**| `python scripts/run_testnet_validation.py` | 15-module Binance Futures Testnet audit |
@@ -93,8 +98,10 @@ Open browser at `http://localhost:8000`
 
 ## Documentation Index
 
+- [`PRE_HERMES_AUDIT.md`](PRE_HERMES_AUDIT.md): Complete component inventory and cross-system dependency mapping.
+- [`PRE_HERMES_ACCEPTANCE_REPORT.md`](PRE_HERMES_ACCEPTANCE_REPORT.md): Authoritative Pre-Hermes acceptance gate report.
+- [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md): Canonical 17-phase development roadmap and test mappings.
+- [`DEVELOPMENT_PLAN_REALITY.md`](DEVELOPMENT_PLAN_REALITY.md): Reconciliation audit of all 17 engineering phases.
 - [`OPERATIONS_GUIDE.md`](OPERATIONS_GUIDE.md): Master operational manual & emergency runbooks.
 - [`SYSTEM_TRACEABILITY.md`](SYSTEM_TRACEABILITY.md): Component traceability matrix across architecture, code, and tests.
 - [`SYSTEM_ACCEPTANCE_REPORT.md`](SYSTEM_ACCEPTANCE_REPORT.md): System acceptance verification report.
-- [`PHASE_STATUS_REALITY.md`](PHASE_STATUS_REALITY.md): Verified implementation reality of all 20 development phases.
-- [`REPOSITORY_AUDIT_REPORT.md`](REPOSITORY_AUDIT_REPORT.md): Principal software audit findings.

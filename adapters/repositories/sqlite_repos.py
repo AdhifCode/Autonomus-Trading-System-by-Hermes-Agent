@@ -17,7 +17,6 @@ from core.domain.enums import (
     OrderType,
     PositionSide,
     RiskDecisionType,
-    Severity,
     StrategyLifecycle,
 )
 from core.domain.events import AuditEvent
@@ -330,13 +329,18 @@ class PositionRepository:
                 strategy_id, strategy_version, opened_at, closed_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(position_id) DO UPDATE SET
+                side=excluded.side,
                 quantity=excluded.quantity,
+                entry_price=excluded.entry_price,
                 current_price=excluded.current_price,
                 unrealized_pnl=excluded.unrealized_pnl,
                 realized_pnl=excluded.realized_pnl,
                 total_fees=excluded.total_fees,
                 total_funding=excluded.total_funding,
                 total_slippage=excluded.total_slippage,
+                strategy_id=excluded.strategy_id,
+                strategy_version=excluded.strategy_version,
+                opened_at=excluded.opened_at,
                 closed_at=excluded.closed_at,
                 updated_at=excluded.updated_at
         """
@@ -619,9 +623,7 @@ class SystemEventRepository:
         """
         metadata_json = json.dumps(event.metadata, default=str) if event.metadata else None
         params = (
-            event.event_type.value
-            if hasattr(event.event_type, "value")
-            else str(event.event_type),
+            event.event_type.value if hasattr(event.event_type, "value") else str(event.event_type),
             event.severity.value if hasattr(event.severity, "value") else str(event.severity),
             event.source,
             event.message,

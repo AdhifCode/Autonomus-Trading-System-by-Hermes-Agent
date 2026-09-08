@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Header, HTTPException, status
 
 DEFAULT_API_KEY = os.getenv("CONTROL_CENTER_API_KEY", "hermes-trader-secret-key-v2.1")
 

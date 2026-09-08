@@ -11,6 +11,7 @@ Validates:
 from __future__ import annotations
 
 import tempfile
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -22,7 +23,10 @@ from web.service import ControlCenterService
 @pytest.fixture
 def temp_service():
     """Fixture providing an isolated ControlCenterService with temporary SQLite database."""
-    with tempfile.NamedTemporaryFile(suffix=".db") as tmp_db, tempfile.TemporaryDirectory() as tmp_vault:
+    with (
+        tempfile.NamedTemporaryFile(suffix=".db") as tmp_db,
+        tempfile.TemporaryDirectory() as tmp_vault,
+    ):
         service = ControlCenterService(db_path=tmp_db.name, vault_path=tmp_vault)
         yield service
 
@@ -108,11 +112,16 @@ def test_protected_endpoints_require_auth(client):
     assert res1.status_code == 401
 
     # 2. Trade proposal without auth -> 401
-    res2 = client.post("/api/v1/trade/propose", json={"symbol": "BTCUSDT", "side": "BUY", "quantity": 0.1})
+    res2 = client.post(
+        "/api/v1/trade/propose", json={"symbol": "BTCUSDT", "side": "BUY", "quantity": 0.1}
+    )
     assert res2.status_code == 401
 
     # 3. Advance stage without auth -> 401
-    res3 = client.post("/api/v1/learning/advance-stage", json={"lesson_id": "LES-001", "target_stage": "PRODUCTION_STRATEGY"})
+    res3 = client.post(
+        "/api/v1/learning/advance-stage",
+        json={"lesson_id": "LES-001", "target_stage": "PRODUCTION_STRATEGY"},
+    )
     assert res3.status_code == 401
 
 
@@ -155,12 +164,20 @@ def test_kill_switch_blocks_trade_proposals(client):
     headers = {"X-API-Key": "hermes-trader-secret-key-v2.1"}
 
     # Activate Kill Switch
-    ks_res = client.post("/api/v1/system/kill-switch", json={"active": True, "reason": "Test Kill Switch"}, headers=headers)
+    ks_res = client.post(
+        "/api/v1/system/kill-switch",
+        json={"active": True, "reason": "Test Kill Switch"},
+        headers=headers,
+    )
     assert ks_res.status_code == 200
     assert ks_res.json()["kill_switch_active"] is True
 
     # Try submitting proposal
-    prop_res = client.post("/api/v1/trade/propose", json={"symbol": "BTCUSDT", "side": "BUY", "quantity": 0.1}, headers=headers)
+    prop_res = client.post(
+        "/api/v1/trade/propose",
+        json={"symbol": "BTCUSDT", "side": "BUY", "quantity": 0.1},
+        headers=headers,
+    )
     assert prop_res.status_code == 200
     prop_data = prop_res.json()
 

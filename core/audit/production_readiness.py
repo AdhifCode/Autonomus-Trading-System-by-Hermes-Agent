@@ -15,38 +15,20 @@ Safety Rule: LIVE trading MUST remain inactive.
 
 from __future__ import annotations
 
-import os
-import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
-from pathlib import Path
-from typing import Any
+from enum import StrEnum
 
 from core.domain.enums import (
-    ExecutionState,
-    KillSwitchState,
-    MarketRegime,
-    OrderSide,
-    OrderStatus,
-    OrderType,
     PositionSide,
-    RiskDecisionType,
-    StrategyLifecycle,
-    TradingMode,
 )
 from core.domain.position import Position
-from core.execution.idempotency import IdempotencyManager
-from core.execution.reconciliation import ReconciliationEngine
-from core.execution.service import ExecutionService
-from integration.hermes.security import HermesSecurityBoundary
 from core.logging import get_logger
-from core.risk.engine import RiskEngine
 
 logger = get_logger(__name__)
 
 
-class IssueSeverity(str, Enum):
+class IssueSeverity(StrEnum):
     CRITICAL = "CRITICAL"
     HIGH = "HIGH"
     MEDIUM = "MEDIUM"
@@ -67,7 +49,7 @@ class ProductionReadinessTelemetry:
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     trading_mode_verified: str = "PAPER / TESTNET (LIVE INACTIVE)"
     findings: list[AuditFinding] = field(default_factory=list)
-    
+
     # Audit Scores
     trading_correctness_pass: bool = False
     execution_pass: bool = False
@@ -118,7 +100,12 @@ class ProductionReadinessAuditEngine:
         return self.telemetry
 
     def _add_finding(
-        self, category: str, item: str, severity: IssueSeverity, description: str, status: str = "PASS"
+        self,
+        category: str,
+        item: str,
+        severity: IssueSeverity,
+        description: str,
+        status: str = "PASS",
     ) -> None:
         self.telemetry.findings.append(
             AuditFinding(
@@ -401,6 +388,7 @@ class ProductionReadinessAuditEngine:
         ts_str = t.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")
 
         md = f"""# Trader Control Center — Phase 16: Production Readiness Review
+> Audit Timestamp: {ts_str}
 
 ## 1. Executive Summary & Audit Declaration
 
@@ -468,4 +456,9 @@ graph TD
         return md
 
 
-__all__ = ["ProductionReadinessAuditEngine", "ProductionReadinessTelemetry", "IssueSeverity", "AuditFinding"]
+__all__ = [
+    "AuditFinding",
+    "IssueSeverity",
+    "ProductionReadinessAuditEngine",
+    "ProductionReadinessTelemetry",
+]

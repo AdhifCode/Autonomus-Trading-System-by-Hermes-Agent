@@ -96,7 +96,7 @@ source .venv/bin/activate
 ### Step 4: Install Dependencies
 ```bash
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -e ".[dev,analytics]"
 ```
 
 ### Step 5: Configure Environment Variables
@@ -108,7 +108,7 @@ cp .env.example .env
 ```bash
 python -m migrations.runner
 ```
-*Expected Output*: `Migration runner: Applied all pending migrations successfully. Current version: V2.1`
+*Expected Output*: `Migration runner: Applied all pending migrations successfully.`
 
 ### Step 7: Create Data & Log Directories
 ```bash
@@ -117,7 +117,9 @@ mkdir -p data logs configs/environments
 
 ### Step 8: Verify System Health & Run Test Suite
 ```bash
-pytest tests/unit/ -v
+pytest tests/ -v
+python scripts/verify_system.py
+```
 ```
 *Expected Output*: `587 passed in 13.00s`
 
@@ -131,7 +133,8 @@ The system uses YAML environment configurations to isolate operational modes:
 
 | Environment File | Trading Mode | Exchange Adapter | Database Path | Target Purpose |
 |---|---|---|---|---|
-| `configs/environments/dev.yaml` | `DEVELOPMENT` | `MockExchange` | `data/trading_dev.db` | Local code development & unit testing |
+| `configs/environments/development.yaml` | `DEVELOPMENT` | `MockExchange` | `data/trading_dev.db` | Local code development & unit testing |
+| `configs/environments/test.yaml` | `DEVELOPMENT` | `MockExchange` | `:memory:` | Automated isolated unit/integration tests |
 | `configs/environments/paper.yaml` | `PAPER` | `MockExchange` (200ms latency) | `data/trading_paper.db` | Paper trading & strategy validation |
 | `configs/environments/testnet.yaml` | `TESTNET` | `BinanceAdapter` (Testnet) | `data/trading_testnet.db` | Binance Futures Testnet validation |
 | `configs/environments/production.yaml` | `LIMITED_LIVE` | `BinanceAdapter` (Production REST/WS) | `data/trading_production.db` | Limited Live capital execution ($1,000 USD cap) |
@@ -581,7 +584,7 @@ curl -s http://localhost:8000/api/v1/health | jq .
    ```
 5. **Update Virtual Environment Dependencies**:
    ```bash
-   source .venv/bin/activate && pip install -r requirements.txt
+   source .venv/bin/activate && pip install -e ".[dev,analytics]"
    ```
 6. **Run Database Migrations**:
    ```bash
@@ -701,6 +704,9 @@ SHUTDOWN PROCEDURE
 ```bash
 # Start Control Center Web Application
 python -m uvicorn web.app:app --host 0.0.0.0 --port 8000
+
+# Run Full Local System Verification (46 Gates)
+python scripts/verify_system.py
 
 # Run Full System Test Suite (587 Tests)
 pytest tests/ -v

@@ -32,7 +32,9 @@ def main() -> None:
     print(f"- Cancellation Verified: {telemetry.cancellation_verified}")
     print(f"- Fills & Partial Fills Verified: {telemetry.fills_verified}")
     print(f"- Balances & Positions Verified: {telemetry.balances_verified}")
-    print(f"- WebSocket & Reconnect Verified: {telemetry.websocket_verified} / {telemetry.reconnect_verified}")
+    print(
+        f"- WebSocket & Reconnect Verified: {telemetry.websocket_verified} / {telemetry.reconnect_verified}"
+    )
     print(f"- REST Rate Limit Weight Used: {telemetry.rate_limit_weight_used}")
     print(f"- Controlled Failures Passed: {len(telemetry.controlled_failures_passed)}")
 

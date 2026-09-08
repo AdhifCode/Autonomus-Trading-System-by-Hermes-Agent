@@ -164,9 +164,22 @@ class ExecutionService:
         sm.transition_to(ExecutionState.EXECUTION_PENDING, reason="Preparing exchange order")
 
         now = datetime.now(tz=UTC)
-        # Approximate order quantity based on entry price (or 1.0 default for test unit consistency)
         price = proposal.entry.price
-        qty = round(1000.0 / price, 4) if price > 0 else 1.0
+        equity = 0.0
+        if self.balance_repo is not None:
+            try:
+                bal = self.balance_repo.get_latest("USDT", source="local")
+                equity = float(bal.get("total", bal.get("available", 0.0)))
+            except Exception:
+                equity = 0.0
+
+        if equity > 0 and proposal.position_size and proposal.position_size.requested_pct > 0:
+            target_notional = equity * proposal.position_size.requested_pct
+            qty = round(target_notional / price, 4) if price > 0 else 1.0
+        elif price > 0:
+            qty = round(1000.0 / price, 4)
+        else:
+            qty = 1.0
 
         order = Order(
             client_order_id=client_order_id,

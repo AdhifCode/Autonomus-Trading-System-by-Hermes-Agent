@@ -27,7 +27,7 @@ import asyncio
 import os
 import time
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -49,27 +49,15 @@ from adapters.repositories.sqlite_repos import (
     TradeRepository,
 )
 from core.domain.enums import (
-    ExecutionState,
-    KillSwitchState,
     OrderSide,
     OrderStatus,
     OrderType,
-    PositionSide,
-    RiskDecisionType,
-    TradingMode,
 )
-from core.domain.market_state import MarketState
 from core.domain.order import Order
-from core.domain.portfolio import PortfolioState
-from core.domain.position import Position
-from core.domain.risk import RiskDecision, RiskPolicy
-from core.domain.system_state import SystemState
-from core.domain.trade_proposal import TradeProposal
 from core.errors import (
     ExchangeDisconnectedError,
     ExchangeError,
     ExchangeTimeoutError,
-    RecordNotFoundError,
 )
 from core.execution.reconciliation import ReconciliationEngine
 from core.execution.service import ExecutionService
@@ -86,7 +74,7 @@ class BinanceTestnetTelemetry:
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     trading_mode: str = "TESTNET"
     testnet_url: str = "https://testnet.binancefuture.com"
-    
+
     # 15 Required Validation Checks
     auth_verified: bool = False
     market_data_verified: bool = False
@@ -121,7 +109,7 @@ class BinanceTestnetValidationEngine:
         self,
         db_path: str = "data/trading_testnet.db",
         api_key: str = "testnet_api_key_sample_12345",
-        api_secret: str = "testnet_api_secret_sample_67890",
+        api_secret: str = "testnet_api_secret_sample_67890",  # noqa: S107
         custom_transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.db_path = db_path
@@ -235,7 +223,7 @@ class BinanceTestnetValidationEngine:
     def _test_live_protection_guard(self) -> None:
         """Validate live trading protection guard (raises ExchangeError on live flags/urls)."""
         logger.info("Validating Live Trading Protection Guard...")
-        
+
         # Test 1: testnet=False raises exception
         try:
             BinanceRESTClient(testnet=False)
@@ -292,7 +280,9 @@ class BinanceTestnetValidationEngine:
         self.telemetry.positions_verified = True
         self.telemetry.rest_verification_verified = True
 
-    def _test_order_lifecycle(self, adapter: BinanceAdapter, exec_service: ExecutionService) -> None:
+    def _test_order_lifecycle(
+        self, adapter: BinanceAdapter, exec_service: ExecutionService
+    ) -> None:
         """Validate order submission, partial fills, complete fills, and execution state."""
         logger.info("Validating Order Submission, Partial Fills, and Complete Fills...")
         now = datetime.now(UTC)
@@ -317,7 +307,11 @@ class BinanceTestnetValidationEngine:
         # Query order state back
         fetched_order = self._run_async(adapter.get_order("TRD-TESTNET-0001"))
         assert fetched_order.client_order_id == "TRD-TESTNET-0001"
-        assert fetched_order.status in (OrderStatus.FILLED, OrderStatus.PARTIAL, OrderStatus.SUBMITTED)
+        assert fetched_order.status in (
+            OrderStatus.FILLED,
+            OrderStatus.PARTIAL,
+            OrderStatus.SUBMITTED,
+        )
 
         self.telemetry.partial_fills_verified = True
         self.telemetry.fills_verified = True
@@ -368,6 +362,7 @@ class BinanceTestnetValidationEngine:
     def _test_timeout_and_error_handling(self, client: BinanceRESTClient) -> None:
         """Validate HTTP timeout exception mapping and error handling."""
         logger.info("Validating Request Timeout Behavior...")
+
         # Create timeout client
         def timeout_handler(request: httpx.Request) -> httpx.Response:
             raise httpx.ConnectTimeout("Simulated HTTP Timeout")
@@ -578,7 +573,7 @@ class BinanceTestnetValidationEngine:
 
     def _run_async(self, coro: Any) -> Any:
         """Synchronously execute coroutine in runner context."""
-        import asyncio
+        import concurrent.futures
 
         try:
             loop = asyncio.get_running_loop()
@@ -586,10 +581,8 @@ class BinanceTestnetValidationEngine:
             loop = None
 
         if loop and loop.is_running():
-            import nest_asyncio
-
-            nest_asyncio.apply()
-            return loop.run_until_complete(coro)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(asyncio.run, coro).result()
         else:
             return asyncio.run(coro)
 
@@ -602,6 +595,7 @@ class BinanceTestnetValidationEngine:
             return "PASSED" if val else "FAILED"
 
         md = f"""# Trader Control Center — Phase 15: Testnet Validation Audit Report
+> Audit Timestamp: {ts_str}
 
 ## 1. Executive Summary & Environment Protocol
 This report details the execution results of **Phase 15: Testnet Validation** performed against the **Binance Futures Testnet** interface (`configs/environments/testnet.yaml`).
@@ -664,4 +658,4 @@ This report details the execution results of **Phase 15: Testnet Validation** pe
         return md
 
 
-__all__ = ["BinanceTestnetValidationEngine", "BinanceTestnetTelemetry"]
+__all__ = ["BinanceTestnetTelemetry", "BinanceTestnetValidationEngine"]

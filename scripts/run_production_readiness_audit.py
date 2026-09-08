@@ -16,7 +16,9 @@ def main() -> None:
     print("Initializing Phase 16 Production Readiness Review Audit Engine...")
     engine = ProductionReadinessAuditEngine()
 
-    print("Auditing system against architecture.md & implementation_spec.md across 5 core dimensions...")
+    print(
+        "Auditing system against architecture.md & implementation_spec.md across 5 core dimensions..."
+    )
     telemetry = engine.run_full_audit()
 
     print("\nPhase 16 Production Readiness Audit Complete!")
@@ -26,16 +28,20 @@ def main() -> None:
     print(f"- Risk Engine Authority: {'PASSED' if telemetry.risk_pass else 'FAILED'}")
     print(f"- AI / Hermes Boundary: {'PASSED' if telemetry.ai_boundary_pass else 'FAILED'}")
     print(f"- Operational Resilience: {'PASSED' if telemetry.operations_pass else 'FAILED'}")
-    print(f"\nAudit Findings Summary:")
+    print("\nAudit Findings Summary:")
     print(f"  CRITICAL Issues: {telemetry.critical_count} (Mandate: ZERO)")
     print(f"  HIGH Issues:     {telemetry.high_count} (Mandate: ZERO)")
     print(f"  MEDIUM Issues:   {telemetry.medium_count}")
     print(f"  LOW Issues:      {telemetry.low_count}")
 
     if telemetry.critical_count == 0 and telemetry.high_count == 0:
-        print("\nSUCCESS: Production readiness gate PASSED with ZERO CRITICAL and ZERO HIGH issues.")
+        print(
+            "\nSUCCESS: Production readiness gate PASSED with ZERO CRITICAL and ZERO HIGH issues."
+        )
     else:
-        print("\nFAILURE: Production readiness gate FAILED due to unmitigated CRITICAL or HIGH issues.")
+        print(
+            "\nFAILURE: Production readiness gate FAILED due to unmitigated CRITICAL or HIGH issues."
+        )
 
     report_md = engine.generate_report_markdown()
 

@@ -1,9 +1,18 @@
-"""Shared test fixtures for the trading system test suite."""
+"""Shared test fixtures and global pytest configuration.
+
+Ensures the test suite runs with virtual environment precedence and isolates
+the runtime from host system-wide packages (e.g. incompatible Debian pandas/numpy).
+"""
+# ruff: noqa: E402, I001
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
+import sys
+
+# Shield virtual environment imports from host Debian/Ubuntu system dist-packages
+sys.path = [p for p in sys.path if not p.startswith("/usr/lib/python3/dist-packages")]
 
 import pytest
 
